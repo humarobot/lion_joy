@@ -34,6 +34,9 @@ stand_up_enter_flag = False
 stand_up_flag = False
 sit_down_enter_flag = False
 sit_down_flag = True
+stance_flag = True
+trot_flag = False
+gait_switch_flag = False
 
 static_walk = mode_schedule()
 static_walk.eventTimes = [0.0,0.3,0.6,0.9,1.2]
@@ -75,12 +78,23 @@ def callback_joy(data:Joy):
     # print(data.axes[0]) 
     global stand_up_enter_flag
     global sit_down_enter_flag
+    global trot_flag,stance_flag,gait_switch_flag
     if(data.buttons[LB]==1 and sit_down_flag):
         print("LB")
         stand_up_enter_flag = True
     elif(data.buttons[LB]==1 and stand_up_flag):
         print("LB")
         sit_down_enter_flag = True
+    #if RB button was pressed, switch between stance and trot
+    if(data.buttons[RB]==1 and stance_flag):
+        trot_flag=True
+        stance_flag=False
+        gait_switch_flag=True
+    elif(data.buttons[RB]==1 and trot_flag):
+        stance_flag=True
+        trot_flag=False
+        gait_switch_flag=True
+
     tw.linear.x = 0.5*data.axes[1]
     tw.linear.y = 0.5*data.axes[0]
     tw.angular.z = data.axes[2]
@@ -113,14 +127,21 @@ if __name__ == '__main__':
                     stand_up_pose.pose.position.z = 0.5
                     print("sit down finished")
 
-            # total_vel = math.sqrt(tw.linear.x**2+tw.linear.y**2+tw.angular.z**2)
+            if trot_flag and gait_switch_flag:
+                print("trot")
+                mode_publisher.publish(trot)
+                gait_switch_flag=False
+            elif stance_flag and gait_switch_flag:
+                print("stance")
+                mode_publisher.publish(stance)
+                gait_switch_flag=False
 
+            # total_vel = math.sqrt(tw.linear.x**2+tw.linear.y**2+tw.angular.z**2)
             # if total_vel>0.03 and last_total_vel<=0.03:
             #     mode_publisher.publish(trot)
             # elif total_vel<0.03 and last_total_vel>=0.03:
             #     mode_publisher.publish(stance)
             # last_total_vel = total_vel
-
             # vel_publisher.publish(tw) 
             rate.sleep()
     except rospy.ROSInterruptException:
