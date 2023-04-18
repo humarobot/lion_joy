@@ -115,7 +115,7 @@ def callback_joy(data:Joy):
         gait_switch_flag=True
     
     tw.linear.x = 0.5*data.axes[1]
-    tw.linear.y = 0.3*data.axes[0]
+    tw.linear.y = 0.5*data.axes[0]
     tw.angular.z = data.axes[2]
 
 def callback_state(data:mpc_observation):
@@ -150,8 +150,8 @@ if __name__ == '__main__':
             if stand_up_enter_flag and not stand_up_flag and stance_flag:
                 print("standing up")
                 sit_down_pose.pose.position.z = sit_down_pose.pose.position.z + 0.05
-                sit_down_pose.pose.position.x = x_obs
-                sit_down_pose.pose.position.y = y_obs
+                sit_down_pose.pose.position.x = target_pose.pose.position.x
+                sit_down_pose.pose.position.y = target_pose.pose.position.y
                 #rpy_obs to quaternion
                 #restrict rpy_obs[0] to be in [0,2*pi]
                 if rpy_obs[0] < 0:
@@ -173,8 +173,8 @@ if __name__ == '__main__':
             elif sit_down_enter_flag and not sit_down_flag and stance_flag:
                 print("sitting down")
                 stand_up_pose.pose.position.z = stand_up_pose.pose.position.z - 0.05
-                stand_up_pose.pose.position.x = x_obs
-                stand_up_pose.pose.position.y = y_obs
+                stand_up_pose.pose.position.x = target_pose.pose.position.x
+                stand_up_pose.pose.position.y = target_pose.pose.position.y
                 quat = tf.transformations.quaternion_from_euler(rpy_obs[0],rpy_obs[1],rpy_obs[2])
                 stand_up_pose.pose.orientation.x = quat[0]
                 stand_up_pose.pose.orientation.y = quat[1]
