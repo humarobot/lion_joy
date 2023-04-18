@@ -61,7 +61,7 @@ sit_down_pose = PoseStamped()
 sit_down_pose.header.frame_id = "odom"
 sit_down_pose.pose.position.x = 0.0
 sit_down_pose.pose.position.y = 0.0
-sit_down_pose.pose.position.z = 0.0
+sit_down_pose.pose.position.z = 0.1
 sit_down_pose.pose.orientation.x = 0.0
 sit_down_pose.pose.orientation.y = 0.0
 sit_down_pose.pose.orientation.z = 0.0
@@ -77,6 +77,17 @@ stand_up_pose.pose.orientation.y = 0.0
 stand_up_pose.pose.orientation.z = 0.0
 stand_up_pose.pose.orientation.w = 1.0
 
+target_pose = PoseStamped()
+target_pose.header.frame_id = "odom"
+target_pose.pose.position.x = 0.0
+target_pose.pose.position.y = 0.0
+target_pose.pose.position.z = 0.5
+target_pose.pose.orientation.x = 0.0
+target_pose.pose.orientation.y = 0.0
+target_pose.pose.orientation.z = 0.0
+target_pose.pose.orientation.w = 1.0
+target_rpy = [0.0,0.0,0.0]
+
 total_vel = 0.0
 last_total_vel = 0.0
 
@@ -86,6 +97,7 @@ def callback_joy(data:Joy):
     global stand_up_enter_flag,stand_up_flag
     global sit_down_enter_flag,sit_down_flag
     global trot_flag,stance_flag,gait_switch_flag
+    global vel_update_flag
     if(data.buttons[LB]==1 and sit_down_flag and stance_flag):
         print("LB")
         stand_up_enter_flag = True
@@ -101,9 +113,9 @@ def callback_joy(data:Joy):
         stance_flag=True
         trot_flag=False
         gait_switch_flag=True
-
+    
     tw.linear.x = 0.5*data.axes[1]
-    tw.linear.y = 0.5*data.axes[0]
+    tw.linear.y = 0.3*data.axes[0]
     tw.angular.z = data.axes[2]
 
 def callback_state(data:mpc_observation):
@@ -156,7 +168,7 @@ if __name__ == '__main__':
                     stand_up_enter_flag = False
                     stand_up_flag = True
                     sit_down_flag = False
-                    sit_down_pose.pose.position.z = 0.0
+                    sit_down_pose.pose.position.z = 0.1
                     print("stand up finished")
             elif sit_down_enter_flag and not sit_down_flag and stance_flag:
                 print("sitting down")
@@ -169,7 +181,7 @@ if __name__ == '__main__':
                 stand_up_pose.pose.orientation.z = quat[2]
                 stand_up_pose.pose.orientation.w = quat[3]
                 target_publisher.publish(stand_up_pose)
-                if stand_up_pose.pose.position.z <= 0.0:
+                if stand_up_pose.pose.position.z <= 0.1:
                     sit_down_enter_flag = False
                     sit_down_flag = True
                     stand_up_flag = False
@@ -186,7 +198,16 @@ if __name__ == '__main__':
                 gait_switch_flag=False
 
             if(trot_flag):
-                vel_publisher.publish(tw) 
+                # vel_publisher.publish(tw) 
+                target_pose.pose.position.x = target_pose.pose.position.x + tw.linear.x*0.1
+                target_pose.pose.position.y = target_pose.pose.position.y + tw.linear.y*0.1
+                target_rpy[0] = target_rpy[0] + tw.angular.z*0.1
+                quat = tf.transformations.quaternion_from_euler(target_rpy[0],target_rpy[1],target_rpy[2])
+                target_pose.pose.orientation.x = quat[0]
+                target_pose.pose.orientation.y = quat[1]
+                target_pose.pose.orientation.z = quat[2]
+                target_pose.pose.orientation.w = quat[3]
+                target_publisher.publish(target_pose)
             rate.sleep()
     except rospy.ROSInterruptException:
         pass
