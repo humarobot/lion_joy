@@ -50,8 +50,8 @@ static_walk.eventTimes = [0.0,0.3,0.6,0.9,1.2]
 static_walk.modeSequence = [13,7,14,11]
 
 trot = mode_schedule()
-trot.eventTimes = [0.0,0.3,0.6]
-trot.modeSequence = [9,6]
+trot.eventTimes = [0.0,0.35,0.5,0.85,1.0]
+trot.modeSequence = [9,15,6,15]
 
 stance = mode_schedule()
 stance.eventTimes = [0.0,0.5]
