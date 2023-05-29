@@ -39,6 +39,7 @@ sit_down_flag = True
 stance_flag = True
 trot_flag = False
 gait_switch_flag = False
+body_twist_flag = False
 
 x_obs = 0.0
 y_obs = 0.0
@@ -50,8 +51,8 @@ static_walk.eventTimes = [0.0,0.3,0.6,0.9,1.2]
 static_walk.modeSequence = [13,7,14,11]
 
 trot = mode_schedule()
-trot.eventTimes = [0.0,0.35,0.5,0.85,1.0]
-trot.modeSequence = [9,15,6,15]
+trot.eventTimes = [0.0,0.35,0.7]
+trot.modeSequence = [9,6]
 
 stance = mode_schedule()
 stance.eventTimes = [0.0,0.5]
@@ -86,6 +87,7 @@ def callback_joy(data:Joy):
     global stand_up_enter_flag,stand_up_flag
     global sit_down_enter_flag,sit_down_flag
     global trot_flag,stance_flag,gait_switch_flag
+    global body_twist_flag
     if(data.buttons[LB]==1 and sit_down_flag and stance_flag):
         print("LB")
         stand_up_enter_flag = True
@@ -101,6 +103,16 @@ def callback_joy(data:Joy):
         stance_flag=True
         trot_flag=False
         gait_switch_flag=True
+
+    #if A button was pressed, entering body twist mode
+    if(data.buttons[A]==1 and stance_flag and stand_up_flag):
+        # print("A")
+        body_twist_flag=True
+    elif(data.buttons[A]==0 and stance_flag and stand_up_flag):
+        # print("release A")
+        body_twist_flag=False
+        
+    
 
     tw.linear.x = 0.5*data.axes[1]
     tw.linear.y = 0.5*data.axes[0]
@@ -185,6 +197,18 @@ if __name__ == '__main__':
                 mode_publisher.publish(stance)
                 gait_switch_flag=False
 
+            if body_twist_flag:
+                yaw = tw.linear.y
+                pitch = 0.5*tw.linear.x
+                stand_up_pose.pose.position.z = stand_up_pose.pose.position.z
+                stand_up_pose.pose.position.x = x_obs
+                stand_up_pose.pose.position.y = y_obs
+                quat = tf.transformations.quaternion_from_euler(yaw,pitch,0.0)
+                stand_up_pose.pose.orientation.x = quat[0]
+                stand_up_pose.pose.orientation.y = quat[1]
+                stand_up_pose.pose.orientation.z = quat[2]
+                stand_up_pose.pose.orientation.w = quat[3]
+                target_publisher.publish(stand_up_pose)
             if(trot_flag):
                 vel_publisher.publish(tw) 
             rate.sleep()
