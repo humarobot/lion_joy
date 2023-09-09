@@ -6,6 +6,7 @@ from geometry_msgs.msg import Twist
 from ocs2_msgs.msg import mode_schedule
 from geometry_msgs.msg import PoseStamped
 from ocs2_msgs.msg import mpc_observation
+from std_msgs.msg import Bool
 import tf
 import math
 
@@ -29,7 +30,10 @@ Y= 4
 vel_publisher = rospy.Publisher('cmd_vel', Twist, queue_size=10)
 mode_publisher = rospy.Publisher('legged_robot_mpc_mode_schedule',mode_schedule, queue_size=10)
 target_publisher = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=10)
+hand_publisher = rospy.Publisher('/hand_state',Bool,queue_size=10)
 tw = Twist()
+
+hand_state = Bool()
 
 init_flag = True
 stand_up_enter_flag = False
@@ -40,6 +44,7 @@ stance_flag = True
 trot_flag = False
 gait_switch_flag = False
 body_twist_flag = False
+hand_close_flag = False
 
 x_obs = 0.0
 y_obs = 0.0
@@ -100,6 +105,7 @@ def callback_joy(data):
     global trot_flag,stance_flag,gait_switch_flag
     global vel_update_flag
     global body_twist_flag
+    global hand_close_flag
     if(data.buttons[LB]==1 and sit_down_flag and stance_flag):
         print("LB")
         stand_up_enter_flag = True
@@ -122,6 +128,13 @@ def callback_joy(data):
     elif(data.buttons[A]==0 and stance_flag and stand_up_flag):
         # print("release A")
         body_twist_flag=False
+    # B button control hands
+    if(data.buttons[B]==1 and hand_close_flag==False):
+        print("hand closing")
+        hand_close_flag = True
+    elif(data.buttons[B]==1 and hand_close_flag==True):
+        print("hand opening")
+        hand_close_flag = False
     tw.linear.x = 0.5*data.axes[1]
     tw.linear.y = 0.5*data.axes[0]
     tw.angular.z = data.axes[2]
@@ -229,6 +242,14 @@ if __name__ == '__main__':
                 target_pose.pose.orientation.z = quat[2]
                 target_pose.pose.orientation.w = quat[3]
                 target_publisher.publish(target_pose)
+            
+            if(hand_close_flag):
+                hand_state.data=True
+                hand_publisher.publish(hand_state)
+            else:
+                hand_state.data=False
+                hand_publisher.publish(hand_state)
+
             rate.sleep()
     except rospy.ROSInterruptException:
         pass
