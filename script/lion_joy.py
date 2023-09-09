@@ -6,7 +6,7 @@ from geometry_msgs.msg import Twist
 from ocs2_msgs.msg import mode_schedule
 from geometry_msgs.msg import PoseStamped
 from ocs2_msgs.msg import mpc_observation
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool,Int32
 import tf
 import math
 
@@ -31,9 +31,11 @@ vel_publisher = rospy.Publisher('cmd_vel', Twist, queue_size=10)
 mode_publisher = rospy.Publisher('legged_robot_mpc_mode_schedule',mode_schedule, queue_size=10)
 target_publisher = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=10)
 hand_publisher = rospy.Publisher('/hand_state',Bool,queue_size=10)
+demonstrate_publisher = rospy.Publisher('/demonstrator',Int32,queue_size=10)
 tw = Twist()
 
 hand_state = Bool()
+demonstrate_command = Int32()
 
 init_flag = True
 stand_up_enter_flag = False
@@ -45,6 +47,8 @@ trot_flag = False
 gait_switch_flag = False
 body_twist_flag = False
 hand_close_flag = False
+recording_flag = False
+replaying_flag = False
 
 x_obs = 0.0
 y_obs = 0.0
@@ -106,6 +110,7 @@ def callback_joy(data):
     global vel_update_flag
     global body_twist_flag
     global hand_close_flag
+    global recording_flag,replaying_flag
     if(data.buttons[LB]==1 and sit_down_flag and stance_flag):
         print("LB")
         stand_up_enter_flag = True
@@ -135,6 +140,28 @@ def callback_joy(data):
     elif(data.buttons[B]==1 and hand_close_flag==True):
         print("hand opening")
         hand_close_flag = False
+    # X button control recording
+    if(data.buttons[X]==1 and recording_flag==False):
+        print("start recording")
+        demonstrate_command.data = 1
+        demonstrate_publisher.publish(demonstrate_command)
+        recording_flag = True
+    elif(data.buttons[X]==1 and recording_flag==True):
+        print("stop recording")
+        demonstrate_command.data = 2
+        demonstrate_publisher.publish(demonstrate_command)
+        recording_flag = False
+    # Y button control replaying
+    if(data.buttons[Y]==1 and replaying_flag==False and recording_flag==False):
+        print("start replaying")
+        demonstrate_command.data = 3
+        demonstrate_publisher.publish(demonstrate_command)
+        replaying_flag = True
+    elif(data.buttons[Y]==1 and replaying_flag==True and recording_flag==False):
+        print("stop replaying")
+        demonstrate_command.data = 4
+        demonstrate_publisher.publish(demonstrate_command)
+        replaying_flag = False
     tw.linear.x = 0.5*data.axes[1]
     tw.linear.y = 0.5*data.axes[0]
     tw.angular.z = data.axes[2]
