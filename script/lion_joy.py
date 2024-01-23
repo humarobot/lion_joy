@@ -6,6 +6,7 @@ from geometry_msgs.msg import Twist
 from ocs2_msgs.msg import mode_schedule
 from geometry_msgs.msg import PoseStamped
 from ocs2_msgs.msg import mpc_observation
+from std_msgs.msg import Bool
 import tf
 import math
 
@@ -29,6 +30,11 @@ Y= 4
 vel_publisher = rospy.Publisher('cmd_vel', Twist, queue_size=10)
 mode_publisher = rospy.Publisher('legged_robot_mpc_mode_schedule',mode_schedule, queue_size=10)
 target_publisher = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=10)
+execute_publisher = rospy.Publisher('/execute_traj',Bool, queue_size=10)
+
+exec = Bool()
+exec.data = False
+
 tw = Twist()
 
 init_flag = True
@@ -39,6 +45,7 @@ sit_down_flag = True
 stance_flag = True
 trot_flag = False
 gait_switch_flag = False
+auto_mode_flag = False
 
 x_obs = 0.0
 y_obs = 0.0
@@ -98,6 +105,8 @@ def callback_joy(data:Joy):
     global sit_down_enter_flag,sit_down_flag
     global trot_flag,stance_flag,gait_switch_flag
     global vel_update_flag
+    global auto_mode_flag
+    global exec
     if(data.buttons[LB]==1 and sit_down_flag and stance_flag):
         print("LB")
         stand_up_enter_flag = True
@@ -113,6 +122,18 @@ def callback_joy(data:Joy):
         stance_flag=True
         trot_flag=False
         gait_switch_flag=True
+    #if A button was pressed, switch between auto mode and manual mode
+    if(data.buttons[A]==1  and stand_up_flag):
+        auto_mode_flag = not auto_mode_flag
+        if auto_mode_flag:
+            print("auto mode")
+        else:
+            print("manual mode")
+    #if B button was pressed, execute the trajectory
+    if(data.buttons[B]==1 and stand_up_flag):
+        exec.data = True
+        execute_publisher.publish(exec)
+        print("execute trajectory")
     
     tw.linear.x = 0.5*data.axes[1]
     tw.linear.y = 0.5*data.axes[0]
@@ -150,8 +171,10 @@ if __name__ == '__main__':
             if stand_up_enter_flag and not stand_up_flag and stance_flag:
                 print("standing up")
                 sit_down_pose.pose.position.z = sit_down_pose.pose.position.z + 0.05
-                sit_down_pose.pose.position.x = target_pose.pose.position.x
-                sit_down_pose.pose.position.y = target_pose.pose.position.y
+                # sit_down_pose.pose.position.x = target_pose.pose.position.x
+                # sit_down_pose.pose.position.y = target_pose.pose.position.y
+                sit_down_pose.pose.position.x = x_obs
+                sit_down_pose.pose.position.y = y_obs
                 #rpy_obs to quaternion
                 #restrict rpy_obs[0] to be in [0,2*pi]
                 if rpy_obs[0] < 0:
@@ -173,8 +196,10 @@ if __name__ == '__main__':
             elif sit_down_enter_flag and not sit_down_flag and stance_flag:
                 print("sitting down")
                 stand_up_pose.pose.position.z = stand_up_pose.pose.position.z - 0.05
-                stand_up_pose.pose.position.x = target_pose.pose.position.x
-                stand_up_pose.pose.position.y = target_pose.pose.position.y
+                # stand_up_pose.pose.position.x = target_pose.pose.position.x
+                # stand_up_pose.pose.position.y = target_pose.pose.position.y
+                stand_up_pose.pose.position.x = x_obs
+                stand_up_pose.pose.position.y = y_obs
                 quat = tf.transformations.quaternion_from_euler(rpy_obs[0],rpy_obs[1],rpy_obs[2])
                 stand_up_pose.pose.orientation.x = quat[0]
                 stand_up_pose.pose.orientation.y = quat[1]
@@ -197,7 +222,7 @@ if __name__ == '__main__':
                 mode_publisher.publish(stance)
                 gait_switch_flag=False
 
-            if(trot_flag):
+            if(trot_flag and not auto_mode_flag):
                 # vel_publisher.publish(tw) 
                 target_pose.pose.position.x = target_pose.pose.position.x + tw.linear.x*0.1
                 target_pose.pose.position.y = target_pose.pose.position.y + tw.linear.y*0.1
