@@ -4,7 +4,9 @@
 
     <!-- make the files into global parameters -->
     <param name="joy_node/dev" value="/dev/input/js0"/>
-
+    <!-- set default_trig_val to true  -->
+    <param name="joy_node/default_trig_val" value="true"/>
+    <!-- <param name="joy_nodeautorepeat_rate" value = "30.0"/> -->
     <node pkg="joy" type="joy_node" name="joy_node"  output="screen"/>
     <node pkg="lion_joy" type="lion_joy.py" name="lion_joy" output="screen"/> 
 

@@ -31,6 +31,7 @@ vel_publisher = rospy.Publisher("cmd_vel", Twist, queue_size=10)
 mode_publisher = rospy.Publisher("legged_robot_mpc_mode_schedule", mode_schedule, queue_size=10)
 target_publisher = rospy.Publisher("/move_base_simple/goal", PoseStamped, queue_size=10)
 execute_publisher = rospy.Publisher("/execute_traj", Bool, queue_size=10)
+chicken_head_publisher = rospy.Publisher("/chicken_head", Bool, queue_size=10)
 
 exec = Bool()
 exec.data = False
@@ -160,10 +161,11 @@ def callback_joy(data: Joy):
         if not chicken_head_mode_flag:
             chicken_head_enter_flag = True
             print("进入鸡头模式")
+            chicken_head_publisher.publish(True)
         else:
             chicken_head_exit_flag = True
             print("退出鸡头模式")
-
+            chicken_head_publisher.publish(False)
     # RT按钮控制高度（仅在鸡头模式下有效）
     # RT和LT通常是模拟触发器，作为axes值而不是buttons值
     # 检测axes[LT]和axes[RT]的值，通常为-1到1之间，可能需要调整索引
@@ -193,15 +195,15 @@ def callback_joy(data: Joy):
 
     # 鸡头模式下的姿态控制
     if chicken_head_mode_flag:
-        # 左摇杆控制yaw角度（范围±45度）
-        # 在基准角度的基础上叠加摇杆输入，范围是±45度
-        chicken_head_rpy[0] = chicken_head_base_yaw + math.radians(data.axes[2] * 45.0)
+        # 左摇杆控制yaw角度（范围±30度）
+        # 在基准角度的基础上叠加摇杆输入，范围是±30度
+        chicken_head_rpy[0] = chicken_head_base_yaw + math.radians(data.axes[2] * 30.0)
 
-        # 右摇杆控制roll和pitch角度（范围±20度）
+        # 右摇杆控制roll和pitch角度（范围±10度）
         # 注意：根据常见手柄配置，可能需要调整索引
         # 通常右摇杆是axes[3]和axes[4]，但有些手柄可能是[2]和[3]或其他
-        chicken_head_rpy[1] = math.radians(data.axes[1] * 20.0)  # 左摇杆上下控制pitch
-        chicken_head_rpy[2] = math.radians(data.axes[0] * -20.0)  # 左摇杆左右控制roll
+        chicken_head_rpy[1] = math.radians(data.axes[1] * 10.0)  # 左摇杆上下控制pitch
+        chicken_head_rpy[2] = math.radians(data.axes[0] * -10.0)  # 左摇杆左右控制roll
 
 
 def callback_state(data: mpc_observation):
